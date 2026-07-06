@@ -1,5 +1,4 @@
 import json
-from datetime import datetime, timedelta, timezone
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
@@ -10,9 +9,22 @@ from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 from telegram.error import InvalidToken, TelegramError
 
-from config.config import BOT_TOKEN, SECRET_KEY, WEBHOOK_URL
-from server.db import Base, engine, get_db
-from server.models import Subscription, User, VpnKey
+from config.config import (
+    BOT_TOKEN,
+    PLATEGA_MERCHANT_ID,
+    PLATEGA_SECRET,
+    SECRET_KEY,
+    WEBHOOK_URL,
+)
+from db.db import Base, engine, get_db
+from db.models import PaymentTransaction, User
+from db.telegram_service import (
+    create_platega_payment,
+    get_active_subscription,
+    get_or_create_telegram_user,
+    handle_platega_callback,
+    PlategaIntegrationError,
+)
 from server.telegram_auth import validate_telegram_webapp_data_verbose
 from telegram import Update
 
@@ -34,57 +46,6 @@ def _get_current_user(request: Request, db: Session) -> User | None:
     if not user_id:
         return None
     return db.scalar(select(User).where(User.id == user_id))
-
-
-def _get_active_subscription(db: Session, user_id: int) -> Subscription | None:
-    now = datetime.now(timezone.utc)
-    return db.scalar(
-        select(Subscription)
-        .where(
-            Subscription.user_id == user_id,
-            Subscription.status == "active",
-            Subscription.expires_at > now,
-        )
-        .order_by(Subscription.expires_at.desc())
-    )
-
-
-def _ensure_default_amnezia_keys(db: Session, user_id: int) -> list[VpnKey]:
-    existing = db.scalars(select(VpnKey).where(VpnKey.user_id == user_id)).all()
-    if existing:
-        return existing
-
-    # Placeholder keys. Replace with real provisioning integration.
-    defaults = [
-        VpnKey(user_id=user_id, server_name="Netherlands", vpn_link="vpn://xxxx"),
-        VpnKey(user_id=user_id, server_name="Germany", vpn_link="vpn://yyyy"),
-    ]
-    db.add_all(defaults)
-    db.commit()
-    return db.scalars(select(VpnKey).where(VpnKey.user_id == user_id)).all()
-
-
-def _serialize_subscription(subscription: Subscription | None) -> dict | None:
-    if not subscription:
-        return None
-    return {
-        "plan_name": subscription.plan_name,
-        "status": subscription.status,
-        "start_date": subscription.start_date.isoformat(),
-        "expires_at": subscription.expires_at.isoformat(),
-    }
-
-
-def _serialize_keys(keys: list[VpnKey]) -> list[dict]:
-    return [
-        {
-            "id": key.id,
-            "server_name": key.server_name,
-            "vpn_link": key.vpn_link,
-            "created_at": key.created_at.isoformat(),
-        }
-        for key in keys
-    ]
 
 
 def init_server():
@@ -118,14 +79,10 @@ def init_server():
                     "request": request,
                     "user": None,
                     "subscription": None,
-                    "vpn_keys": [],
                 },
             )
 
-        subscription = _get_active_subscription(db, user.id)
-        vpn_keys = []
-        if subscription:
-            vpn_keys = _ensure_default_amnezia_keys(db, user.id)
+        subscription = get_active_subscription(db, user.id)
 
         return templates.TemplateResponse(
             request,
@@ -134,7 +91,6 @@ def init_server():
                 "request": request,
                 "user": user,
                 "subscription": subscription,
-                "vpn_keys": vpn_keys,
             },
         )
 
@@ -151,16 +107,7 @@ def init_server():
         if not telegram_id:
             raise HTTPException(status_code=400, detail="Telegram user is missing id")
 
-        user = db.scalar(select(User).where(User.telegram_id == int(telegram_id)))
-        if not user:
-            user = User(
-                telegram_id=int(telegram_id),
-                username=telegram_user.get("username"),
-                first_name=telegram_user.get("first_name"),
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
+        user = get_or_create_telegram_user(db, telegram_user)
 
         request.session["user_id"] = user.id
 
@@ -181,70 +128,89 @@ def init_server():
         request.session.clear()
         return JSONResponse({"ok": True})
 
-    @app.get("/api/me")
-    async def me(request: Request, db: Session = Depends(get_db)):
-        user = _get_current_user(request, db)
-        if not user:
-            raise HTTPException(status_code=401, detail="Unauthorized")
+    @app.post("/payments/platega/callback")
+    async def platega_callback(request: Request, db: Session = Depends(get_db)):
+        merchant_id = request.headers.get("X-MerchantId")
+        secret = request.headers.get("X-Secret")
+        payload = await request.json()
 
-        subscription = _get_active_subscription(db, user.id)
-        keys = db.scalars(select(VpnKey).where(VpnKey.user_id == user.id)).all()
-        return {
-            "user": {
-                "id": user.id,
-                "telegram_id": user.telegram_id,
-                "username": user.username,
-                "first_name": user.first_name,
-                "created_at": user.created_at.isoformat(),
-            },
-            "subscription": _serialize_subscription(subscription),
-            "vpn_keys": _serialize_keys(keys),
-        }
+        if not merchant_id or not secret:
+            raise HTTPException(status_code=401, detail="Missing Platega auth headers")
+        if not PLATEGA_MERCHANT_ID or not PLATEGA_SECRET:
+            raise HTTPException(status_code=503, detail="Platega is not configured")
+        if merchant_id != PLATEGA_MERCHANT_ID or secret != PLATEGA_SECRET:
+            raise HTTPException(status_code=401, detail="Invalid Platega auth headers")
 
-    @app.post("/api/subscriptions/activate")
-    async def activate_subscription(
-        request: Request, db: Session = Depends(get_db)
-    ):
+        payment, confirmed = handle_platega_callback(db, payload)
+        return JSONResponse(
+            {
+                "ok": True,
+                "payment": {
+                    "id": payment.platega_transaction_id,
+                    "status": payment.status,
+                    "confirmed": confirmed,
+                    "plan_code": payment.plan_code,
+                },
+            }
+        )
+
+    @app.post("/api/payments/platega/create")
+    async def create_payment(request: Request, db: Session = Depends(get_db)):
         user = _get_current_user(request, db)
         if not user:
             raise HTTPException(status_code=401, detail="Unauthorized")
 
         payload = await request.json()
         plan_code = payload.get("plan_code")
-        plans = {
-            "200_1m": ("200/месяц", 30),
-            "500_3m": ("500/3 месяца", 90),
-            "900_6m": ("900/6 месяцев", 180),
-        }
+        if not plan_code:
+            raise HTTPException(status_code=400, detail="Missing plan_code")
 
-        plan_data = plans.get(plan_code)
-        if not plan_data:
-            raise HTTPException(status_code=400, detail="Unknown plan")
-
-        plan_name, days = plan_data
-        now = datetime.now(timezone.utc)
-
-        db.query(Subscription).filter(
-            Subscription.user_id == user.id,
-            Subscription.status == "active",
-        ).update({"status": "expired"})
-
-        subscription = Subscription(
-            user_id=user.id,
-            plan_name=plan_name,
-            status="active",
-            start_date=now,
-            expires_at=now + timedelta(days=days),
+        try:
+            payment = await create_platega_payment(db, user, plan_code)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except PlategaIntegrationError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        return JSONResponse(
+            {
+                "ok": True,
+                "payment": {
+                    "id": payment.platega_transaction_id,
+                    "url": payment.payment_url,
+                    "amount": payment.amount,
+                    "plan_name": payment.plan_name,
+                    "status": payment.status,
+                },
+            }
         )
-        db.add(subscription)
-        db.commit()
-        db.refresh(subscription)
 
-        keys = _ensure_default_amnezia_keys(db, user.id)
+    @app.get("/api/payments/{payment_id}")
+    async def get_payment_status(
+        payment_id: str, request: Request, db: Session = Depends(get_db)
+    ):
+        user = _get_current_user(request, db)
+        if not user:
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
+        payment = db.scalar(
+            select(PaymentTransaction).where(
+                PaymentTransaction.platega_transaction_id == payment_id,
+                PaymentTransaction.user_id == user.id,
+            )
+        )
+        if not payment:
+            raise HTTPException(status_code=404, detail="Payment not found")
+
         return {
             "ok": True,
-            "subscription": _serialize_subscription(subscription),
-            "vpn_keys": _serialize_keys(keys),
+            "payment": {
+                "id": payment.platega_transaction_id,
+                "status": payment.status,
+                "amount": payment.amount,
+                "plan_name": payment.plan_name,
+                "payment_url": payment.payment_url,
+                "confirmed_at": payment.confirmed_at.isoformat() if payment.confirmed_at else None,
+            },
         }
 
     @app.post("/telegram")
@@ -302,6 +268,18 @@ def init_server():
             request,
             "price.html",
             {'request': request}
+        )
+
+    @app.get("/payment-widget")
+    async def payment_widget(request: Request):
+        plan_code = request.query_params.get("plan_code", "")
+        return templates.TemplateResponse(
+            request,
+            "payment_widget.html",
+            {
+                "request": request,
+                "plan_code": plan_code,
+            },
         )
 
     

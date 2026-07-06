@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Flora VPN • Оплата</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #050816;
+        --bg2: #0b1630;
+        --card: rgba(13, 23, 46, 0.78);
+        --card-border: rgba(255, 255, 255, 0.09);
+        --text: #f5f7ff;
+        --muted: rgba(245, 247, 255, 0.72);
+        --accent: #33c3ff;
+        --accent-2: #0ea5e9;
+        --success: #22c55e;
+        --danger: #fb7185;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        width: 100%;
+        min-height: 100%;
+        background:
+          radial-gradient(circle at top left, rgba(51, 195, 255, 0.22), transparent 34%),
+          radial-gradient(circle at 80% 20%, rgba(14, 165, 233, 0.18), transparent 28%),
+          linear-gradient(180deg, var(--bg), var(--bg2));
+        color: var(--text);
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+        background-size: 28px 28px;
+        mask-image: radial-gradient(circle at center, black 42%, transparent 100%);
+        pointer-events: none;
+      }
+
+      .page {
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .card {
+        width: min(100%, 560px);
+        background: var(--card);
+        border: 1px solid var(--card-border);
+        border-radius: 28px;
+        padding: 24px;
+        box-shadow: 0 20px 80px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(18px);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .card::after {
+        content: "";
+        position: absolute;
+        inset: auto -20% -30% auto;
+        width: 260px;
+        height: 260px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(51, 195, 255, 0.24), transparent 70%);
+        pointer-events: none;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(51, 195, 255, 0.12);
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 18px 0 10px;
+        font-size: clamp(28px, 6vw, 42px);
+        line-height: 1.02;
+      }
+
+      .subtitle {
+        margin: 0 0 22px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .status {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        color: var(--muted);
+        margin-bottom: 18px;
+      }
+
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 0 6px rgba(51, 195, 255, 0.12);
+      }
+
+      .details {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 22px;
+      }
+
+      .tile {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 18px;
+        padding: 14px;
+      }
+
+      .label {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+
+      .value {
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .message {
+        margin: 18px 0 0;
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .message.error {
+        border-color: rgba(251, 113, 133, 0.35);
+        background: rgba(251, 113, 133, 0.08);
+        color: #ffd5dc;
+      }
+
+      .actions {
+        margin-top: 22px;
+        display: grid;
+        gap: 12px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 50px;
+        width: 100%;
+        border: none;
+        border-radius: 16px;
+        font-size: 15px;
+        font-weight: 800;
+        text-decoration: none;
+        cursor: pointer;
+        transition: transform 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+      }
+
+      .btn:active {
+        transform: scale(0.985);
+      }
+
+      .btn-primary {
+        color: white;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      }
+
+      .btn-secondary {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .loader {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      @media (max-width: 520px) {
+        .card { padding: 20px; border-radius: 24px; }
+        .details { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <section class="card">
+        <div class="eyebrow">Flora VPN Payment Widget</div>
+        <h1>Оформление подписки</h1>
+        <p class="subtitle">Сначала страница авторизует вас через Telegram, затем создаст счёт и покажет кнопку оплаты.</p>
+
+        <div class="status" id="statusLine">
+          <span class="status-dot"></span>
+          <span id="statusText">Подготовка виджета...</span>
+        </div>
+
+        <div class="details">
+          <div class="tile">
+            <div class="label">Тариф</div>
+            <div class="value" id="planName">{{ plan_code or 'не выбран' }}</div>
+          </div>
+          <div class="tile">
+            <div class="label">Сумма</div>
+            <div class="value" id="planAmount">-</div>
+          </div>
+        </div>
+
+        <div class="message" id="messageBox">
+          Откройте страницу из Telegram, чтобы виджет смог получить данные пользователя.
+        </div>
+
+        <div class="actions" id="actions" style="display:none;">
+          <a class="btn btn-primary" id="payButton" href="#" target="_blank" rel="noreferrer">Открыть оплату</a>
+          <button class="btn btn-secondary" id="closeButton" type="button">Закрыть виджет</button>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const PLAN_CODE = {{ plan_code|tojson }};
+
+      const PLAN_LABELS = {
+        "200_1m": { name: "200 ₽ / месяц", amount: "200 ₽" },
+        "500_3m": { name: "500 ₽ / 3 месяца", amount: "500 ₽" },
+        "900_6m": { name: "900 ₽ / 6 месяцев", amount: "900 ₽" },
+      };
+
+      const statusText = document.getElementById("statusText");
+      const messageBox = document.getElementById("messageBox");
+      const actions = document.getElementById("actions");
+      const payButton = document.getElementById("payButton");
+      const planName = document.getElementById("planName");
+      const planAmount = document.getElementById("planAmount");
+      const closeButton = document.getElementById("closeButton");
+
+      const meta = PLAN_LABELS[PLAN_CODE] || null;
+      if (meta) {
+        planName.textContent = meta.name;
+        planAmount.textContent = meta.amount;
+      }
+
+      function setStatus(text, isError = false) {
+        statusText.textContent = text;
+        messageBox.classList.toggle("error", isError);
+      }
+
+      function apiUrl(path) {
+        return new URL(path, window.location.origin).toString();
+      }
+
+      async function authTelegram() {
+        const telegram = window.Telegram?.WebApp;
+        if (!telegram) {
+          throw new Error("Telegram WebApp недоступен");
+        }
+
+        telegram.ready();
+        telegram.expand();
+
+        const initData = telegram.initData || "";
+        if (!initData || !initData.includes("hash=")) {
+          throw new Error("Откройте оплату из Telegram-кнопки бота. Данные Telegram не получены.");
+        }
+
+        const response = await fetch(apiUrl("/auth/telegram"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ init_data: initData }),
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) {
+          throw new Error(data.detail || "Ошибка авторизации");
+        }
+      }
+
+      async function createPayment() {
+        if (!PLAN_CODE) {
+          throw new Error("Не передан plan_code");
+        }
+
+        const response = await fetch(apiUrl("/api/payments/platega/create"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plan_code: PLAN_CODE }),
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) {
+          throw new Error(data.detail || "Не удалось создать платёж");
+        }
+
+        if (!data.payment?.url || typeof data.payment.url !== "string") {
+          throw new Error("Платёжная ссылка не получена от провайдера оплаты");
+        }
+
+        try {
+          // Ensure the provider returned a valid absolute URL.
+          new URL(data.payment.url);
+        } catch (_) {
+          throw new Error("Провайдер вернул некорректную ссылку оплаты");
+        }
+
+        return data.payment;
+      }
+
+      async function initWidget() {
+        try {
+          setStatus("Авторизация в Telegram...");
+          await authTelegram();
+
+          setStatus("Создаю счёт...");
+          const payment = await createPayment();
+
+          setStatus("Счёт готов", false);
+          messageBox.textContent = "Платёж создан. Нажмите кнопку ниже, чтобы открыть страницу оплаты.";
+          payButton.href = payment.url;
+          payButton.textContent = `Открыть оплату ${payment.amount} ₽`;
+          actions.style.display = "grid";
+        } catch (error) {
+          console.error(error);
+          setStatus("Не удалось подготовить оплату", true);
+          const rawMessage = error?.message || "";
+          if (rawMessage.toLowerCase().includes("expected pattern")) {
+            messageBox.textContent = "Некорректный URL оплаты. Проверьте WEBHOOK_URL и ответ платёжного провайдера.";
+          } else {
+            messageBox.textContent = rawMessage || "Неизвестная ошибка";
+          }
+          messageBox.classList.add("error");
+          actions.style.display = "none";
+        }
+      }
+
+      closeButton.addEventListener("click", () => {
+        const telegram = window.Telegram?.WebApp;
+        if (telegram) {
+          telegram.close();
+        }
+      });
+
+      initWidget();
+    </script>
+  </body>
+</html>

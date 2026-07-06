@@ -70,16 +70,6 @@
         font-weight: 700;
       }
 
-      .nav-btn {
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        color: #fff;
-        border-radius: 10px;
-        font-size: 13px;
-        padding: 8px 12px;
-        text-decoration: none;
-      }
-
       .close-btn {
         width: 32px;
         height: 32px;
@@ -129,105 +119,32 @@
         font-size: 13px;
       }
 
-      .badge {
-        border-radius: 999px;
+      .profile-note {
+        font-size: 13px;
+        line-height: 1.5;
+        opacity: 0.75;
+      }
+
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
         padding: 4px 10px;
+        border-radius: 999px;
         font-size: 11px;
         font-weight: 700;
         background: rgba(255, 255, 255, 0.1);
       }
 
-      .badge.active {
+      .status-badge.active {
         background: rgba(16, 185, 129, 0.2);
         color: #6ee7b7;
       }
 
-      .button {
-        width: 100%;
-        border: none;
-        border-radius: 12px;
-        min-height: 46px;
-        font-size: 15px;
-        font-weight: 700;
-        color: #fff;
-        background: linear-gradient(135deg, #0ea5e9, #0284c7);
-        margin-top: 10px;
-        cursor: pointer;
+      .status-badge.expired {
+        background: rgba(239, 68, 68, 0.16);
+        color: #fca5a5;
       }
 
-      .button.secondary {
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-      }
-
-      .plans {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 10px;
-      }
-
-      .plan {
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 12px;
-        padding: 12px;
-      }
-
-      .plan-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 8px;
-      }
-
-      .plan-name {
-        font-size: 13px;
-        font-weight: 700;
-      }
-
-      .plan-price {
-        color: #38bdf8;
-        font-size: 14px;
-        font-weight: 800;
-      }
-
-      .key {
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 12px;
-        padding: 12px;
-        margin-bottom: 10px;
-      }
-
-      .key-server {
-        font-size: 14px;
-        font-weight: 700;
-        margin-bottom: 8px;
-      }
-
-      .key-link {
-        display: block;
-        width: 100%;
-        background: rgba(255, 255, 255, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 10px;
-        padding: 10px;
-        color: #9fdfff;
-        text-decoration: none;
-        font-size: 12px;
-        overflow-wrap: anywhere;
-      }
-
-      .key-actions {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
-        margin-top: 8px;
-      }
-
-      .hint {
-        font-size: 12px;
-        opacity: 0.7;
-        margin-top: 8px;
-      }
     </style>
   </head>
 
@@ -236,7 +153,6 @@
       <div class="header">
         <div class="title">🐋 Личный кабинет</div>
         <div class="header-actions">
-          <a class="nav-btn" href="/">Главная</a>
           <button class="close-btn" onclick="closeMiniApp()">✕</button>
         </div>
       </div>
@@ -248,66 +164,26 @@
           <div class="row"><span>Имя</span><span>{{ user.first_name or '-' }}</span></div>
           <div class="row"><span>Username</span><span>@{{ user.username or 'unknown' }}</span></div>
           <div class="row"><span>Telegram ID</span><span>{{ user.telegram_id }}</span></div>
+          <p class="profile-note">Мини-апп теперь показывает только ваш профиль. Все остальное доступно в Telegram-боте.</p>
         </div>
 
         <div class="card">
           <div class="h2">Подписка</div>
           {% if subscription %}
           <div class="row"><span>Тариф</span><span>{{ subscription.plan_name }}</span></div>
-          <div class="row"><span>Статус</span><span class="badge active">{{ subscription.status }}</span></div>
-          <div class="row"><span>До</span><span>{{ subscription.expires_at.strftime('%d.%m.%Y') }}</span></div>
+          <div class="row"><span>Статус</span><span class="status-badge {{ subscription.status }}">{{ subscription.status }}</span></div>
+          <div class="row"><span>Начало</span><span>{{ subscription.start_date.strftime('%d.%m.%Y') }}</span></div>
+          <div class="row"><span>Действует до</span><span>{{ subscription.expires_at.strftime('%d.%m.%Y') }}</span></div>
           {% else %}
-          <p class="muted">У вас пока нет активной подписки. Выберите тариф ниже.</p>
-          <div class="plans">
-            <div class="plan">
-              <div class="plan-head"><div class="plan-name">Базовый</div><div class="plan-price">200/месяц</div></div>
-              <div class="muted">До 3 устройств</div>
-              <button class="button" onclick="activatePlan('200_1m')">Активировать</button>
-            </div>
-            <div class="plan">
-              <div class="plan-head"><div class="plan-name">Стандарт</div><div class="plan-price">500/3 месяца</div></div>
-              <div class="muted">До 3 устройств</div>
-              <button class="button" onclick="activatePlan('500_3m')">Активировать</button>
-            </div>
-            <div class="plan">
-              <div class="plan-head"><div class="plan-name">Премиум</div><div class="plan-price">900/6 месяцев</div></div>
-              <div class="muted">До 3 устройств</div>
-              <button class="button" onclick="activatePlan('900_6m')">Активировать</button>
-            </div>
-          </div>
+          <p class="muted">Активной подписки пока нет. Оплата доступна в Telegram-боте через inline-кнопки.</p>
           {% endif %}
-        </div>
-
-        <div class="card">
-          <div class="h2">Ключи для Amnezia VPN</div>
-          {% if vpn_keys and vpn_keys|length > 0 %}
-            {% for key in vpn_keys %}
-            <div class="key">
-              <div class="key-server">{{ key.server_name }}</div>
-              <a class="key-link" href="{{ key.vpn_link }}">{{ key.vpn_link }}</a>
-              <div class="key-actions">
-                <button class="button secondary" onclick="copyText('{{ key.vpn_link }}')">Копировать</button>
-                <a class="button secondary" href="{{ key.vpn_link }}" style="text-align:center;line-height:46px;text-decoration:none;">Открыть</a>
-              </div>
-            </div>
-            {% endfor %}
-            <div class="hint">Эти ссылки можно импортировать в приложении Amnezia VPN.</div>
-          {% else %}
-            <p class="muted">Ключи появятся после активации подписки.</p>
-          {% endif %}
-        </div>
-
-        <div class="card">
-          <button class="button secondary" onclick="logoutUser()">Выйти</button>
         </div>
         {% else %}
         <div class="card">
           <div class="h2">Вход через Telegram</div>
           <p class="muted">
-            Для доступа к личному кабинету авторизуйтесь через Telegram WebApp.
-            Пользователь создается автоматически при первом входе.
+            Откройте мини-апп из Telegram, чтобы увидеть профиль.
           </p>
-          <button class="button" onclick="telegramLogin()">Войти через Telegram</button>
         </div>
         {% endif %}
       </div>
@@ -339,72 +215,24 @@
         if (tg && tg.close) tg.close();
       }
 
-      async function telegramLogin(isAuto = false) {
-        if (!tg || !tg.initData) {
-          alert('Откройте эту страницу из Telegram Mini App');
-          return;
-        }
-
-        const res = await fetch('/auth/telegram', {
+      // Auto-login if we are inside Telegram WebApp and user is not in session yet.
+      if (tg && tg.initData && !sessionStorage.getItem('flora_auto_login_done')) {
+        sessionStorage.setItem('flora_auto_login_done', '1');
+        fetch('/auth/telegram', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ init_data: tg.initData })
-        });
-
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
+        }).then(() => location.reload()).catch(() => {
           sessionStorage.removeItem('flora_auto_login_done');
-          alert(data.detail || 'Ошибка авторизации через Telegram');
-          return;
-        }
-
-        // Keep guard set after automatic auth attempt to avoid infinite reload loops
-        // when cookies are blocked inside the current WebView.
-        if (!isAuto) {
-          sessionStorage.removeItem('flora_auto_login_done');
-        }
-        location.reload();
-      }
-
-      async function activatePlan(planCode) {
-        const res = await fetch('/api/subscriptions/activate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ plan_code: planCode })
         });
+      }
 
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          alert(data.detail || 'Не удалось активировать подписку');
-          return;
+      window.addEventListener('message', (event) => {
+        if (!event || !event.data) return;
+        if (event.data === 'platega-paid') {
+          location.reload();
         }
-
-        location.reload();
-      }
-
-      async function logoutUser() {
-        await fetch('/logout', { method: 'POST' });
-        location.reload();
-      }
-
-      async function copyText(value) {
-        try {
-          await navigator.clipboard.writeText(value);
-          if (tg && tg.showPopup) {
-            tg.showPopup({ title: 'Flora VPN', message: 'Ссылка скопирована', buttons: [{ type: 'ok' }] });
-          }
-        } catch (_err) {
-          alert('Не удалось скопировать ссылку');
-        }
-      }
-
-      // Auto-login if we are inside Telegram WebApp and user is not in session yet.
-      {% if not user %}
-      if (tg && tg.initData && !sessionStorage.getItem('flora_auto_login_done')) {
-        sessionStorage.setItem('flora_auto_login_done', '1');
-        telegramLogin(true);
-      }
-      {% endif %}
+      });
     </script>
   </body>
 </html>
