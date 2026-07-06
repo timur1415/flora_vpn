@@ -4,3 +4,6 @@ python-telegram-bot
 jinja2
 aiofiles
 python-multipart
+sqlalchemy>=2.0
+psycopg2-binary
+itsdangerous

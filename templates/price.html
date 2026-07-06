@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Flora VPN • Тарифы</title>
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html, body {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #07111f;
+        color: white;
+        height: 100%;
+        width: 100%;
+        overflow-x: hidden;
+        position: fixed;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(
+            circle at 20% 20%,
+            rgba(0, 170, 255, 0.15),
+            transparent 30%
+          ),
+          radial-gradient(
+            circle at 80% 50%,
+            rgba(0, 200, 255, 0.15),
+            transparent 30%
+          ),
+          radial-gradient(
+            circle at 50% 90%,
+            rgba(0, 120, 255, 0.12),
+            transparent 30%
+          );
+        z-index: -1;
+      }
+
+      .app-container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        height: 100dvh;
+        width: 100%;
+        position: fixed;
+        top: 0;
+        left: 0;
+        padding-top: max(12px, env(safe-area-inset-top));
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        flex-shrink: 0;
+      }
+
+      .header h1 {
+        font-size: 18px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .back-btn {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.08);
+        border: none;
+        border-radius: 50%;
+        color: white;
+        cursor: pointer;
+        font-size: 18px;
+        transition: background 0.2s;
+        text-decoration: none;
+      }
+
+      .back-btn:active {
+        background: rgba(255, 255, 255, 0.15);
+      }
+
+      .scroll-container {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        padding: 0 16px;
+      }
+
+      .scroll-container::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .scroll-container::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .scroll-container::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+      }
+
+      .content {
+        padding: 20px 0;
+        max-width: 100%;
+      }
+
+      h2 {
+        font-size: 24px;
+        font-weight: 800;
+        margin: 20px 0 24px;
+        text-align: center;
+      }
+
+      .subtitle {
+        text-align: center;
+        opacity: 0.75;
+        margin-bottom: 24px;
+        font-size: 14px;
+      }
+
+      .plans-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+
+      .plan {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        padding: 20px;
+        position: relative;
+        transition: all 0.2s ease;
+      }
+
+      .plan.popular {
+        border: 2px solid #0ea5e9;
+        background: rgba(14, 165, 233, 0.08);
+      }
+
+      .plan.popular::before {
+        content: "Популярно";
+        position: absolute;
+        top: -12px;
+        left: 16px;
+        background: #0ea5e9;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 8px;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .plan-header {
+        margin-bottom: 16px;
+        padding-top: 12px;
+      }
+
+      .plan-name {
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+
+      .plan-price {
+        font-size: 32px;
+        font-weight: 800;
+        color: #0ea5e9;
+        margin-bottom: 4px;
+      }
+
+      .plan-period {
+        font-size: 13px;
+        opacity: 0.7;
+      }
+
+      .plan-features {
+        margin: 16px 0;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .plan-feature {
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        opacity: 0.85;
+      }
+
+      .plan-feature::before {
+        content: "✓";
+        color: #0ea5e9;
+        font-weight: 700;
+        font-size: 16px;
+      }
+
+      .plan-btn {
+        display: block;
+        width: 100%;
+        padding: 14px;
+        text-align: center;
+        border-radius: 12px;
+        background: #0ea5e9;
+        color: white;
+        font-size: 15px;
+        font-weight: 700;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        min-height: 44px;
+      }
+
+      .plan-btn:active {
+        transform: scale(0.98);
+      }
+
+      .plan.popular .plan-btn {
+        background: linear-gradient(135deg, #0ea5e9, #0284c7);
+      }
+
+      .faq {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+
+      .faq h3 {
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 16px;
+      }
+
+      .faq-item {
+        margin-bottom: 14px;
+        padding-bottom: 14px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      }
+
+      .faq-item:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      .faq-question {
+        font-weight: 600;
+        font-size: 13px;
+        margin-bottom: 6px;
+      }
+
+      .faq-answer {
+        font-size: 12px;
+        opacity: 0.7;
+        line-height: 1.5;
+      }
+
+      footer {
+        text-align: center;
+        padding: 16px;
+        opacity: 0.5;
+        font-size: 12px;
+        flex-shrink: 0;
+      }
+
+      @supports (padding: max(0px)) {
+        .scroll-container {
+          padding-bottom: max(0px, env(safe-area-inset-bottom));
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="app-container">
+      <div class="header">
+        <a href="/" class="back-btn">←</a>
+        <h1>🐋 Flora VPN</h1>
+        <button class="back-btn" onclick="closeMiniApp()">✕</button>
+      </div>
+
+      <div class="scroll-container">
+        <div class="content">
+          <h2>Тарифные планы</h2>
+          <p class="subtitle">Выберите подходящий план для вас</p>
+
+          <div class="plans-grid">
+            <div class="plan">
+              <div class="plan-header">
+                <div class="plan-name">💰 Базовый</div>
+                <div class="plan-price">200 ₽</div>
+                <div class="plan-period">на 1 месяц</div>
+              </div>
+              <div class="plan-features">
+                <div class="plan-feature">Доступ ко всем серверам</div>
+                <div class="plan-feature">Базовая поддержка</div>
+                <div class="plan-feature">До 3 устройств</div>
+              </div>
+              <button class="plan-btn" onclick="handlePayment('200_1m')">Выбрать</button>
+            </div>
+
+            <div class="plan popular">
+              <div class="plan-header">
+                <div class="plan-name">⭐ Стандарт</div>
+                <div class="plan-price">500 ₽</div>
+                <div class="plan-period">на 3 месяца</div>
+              </div>
+              <div class="plan-features">
+                <div class="plan-feature">Доступ ко всем серверам</div>
+                <div class="plan-feature">Приоритетная поддержка 24/7</div>
+                <div class="plan-feature">До 3 устройств</div>
+                <div class="plan-feature">Высокая скорость</div>
+              </div>
+              <button class="plan-btn" onclick="handlePayment('500_3m')">Выбрать</button>
+            </div>
+
+            <div class="plan">
+              <div class="plan-header">
+                <div class="plan-name">🎯 Премиум</div>
+                <div class="plan-price">900 ₽</div>
+                <div class="plan-period">на 6 месяцев</div>
+              </div>
+              <div class="plan-features">
+                <div class="plan-feature">Все из Стандарта</div>
+                <div class="plan-feature">Эксклюзивные серверы</div>
+                <div class="plan-feature">До 3 устройств</div>
+                <div class="plan-feature">Максимальная скорость</div>
+              </div>
+              <button class="plan-btn" onclick="handlePayment('900_6m')">Выбрать</button>
+            </div>
+          </div>
+
+          <div class="faq">
+            <h3>❓ Часто задаваемые вопросы</h3>
+            
+            <div class="faq-item">
+              <div class="faq-question">Как получить доступ?</div>
+              <div class="faq-answer">После оплаты система автоматически выдаст конфиг для подключения через Amnezia VPN.</div>
+            </div>
+
+            <div class="faq-item">
+              <div class="faq-question">Могу ли я отменить подписку?</div>
+              <div class="faq-answer">Подписка не подлежит отмене. Вы получаете доступ на полный период оплаченного срока.</div>
+            </div>
+
+            <div class="faq-item">
+              <div class="faq-question">Какой способ оплаты?</div>
+              <div class="faq-answer">Мы принимаем платежи через системы, доступные в Telegram.</div>
+            </div>
+
+            <div class="faq-item">
+              <div class="faq-question">Есть ли техническая поддержка?</div>
+              <div class="faq-answer">Конечно! Напишите нам в Telegram @flora_vpn и мы поможем за минуты.</div>
+            </div>
+          </div>
+
+          <footer>🐋 Flora VPN © 2026</footer>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const tg = window.Telegram.WebApp;
+
+      async function initMiniApp() {
+        if (!tg || !tg.ready) return;
+        tg.ready();
+        tg.expand();
+        if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+        if (tg.setHeaderColor) tg.setHeaderColor('#07111f');
+        if (tg.setBackgroundColor) tg.setBackgroundColor('#07111f');
+
+        if (tg.requestFullscreen) {
+          try {
+            await tg.requestFullscreen();
+          } catch (_err) {
+            tg.expand();
+          }
+        }
+      }
+
+      initMiniApp();
+
+      function closeMiniApp() {
+        if (tg && tg.close) tg.close();
+      }
+
+      function handlePayment(plan) {
+        activateSubscription(plan);
+      }
+
+      async function activateSubscription(plan) {
+        if (!tg || !tg.initData) {
+          alert('Откройте страницу через Telegram Mini App');
+          return;
+        }
+
+        const authResponse = await fetch('/auth/telegram', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ init_data: tg.initData })
+        });
+
+        if (!authResponse.ok) {
+          alert('Не удалось авторизовать пользователя');
+          return;
+        }
+
+        const response = await fetch('/api/subscriptions/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plan_code: plan })
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          alert(payload.detail || 'Не удалось активировать подписку');
+          return;
+        }
+
+        window.location.href = '/cabinet';
+      }
+    </script>
+  </body>
+</html>
